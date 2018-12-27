@@ -7,148 +7,160 @@ def instructions_from_file(filename):
                 yield int.from_bytes(bytes, byteorder="little")
             else:
                 break
-def parse_int(instructionPointer):
-    int = program[instructionPointer]
-    if 0 <= int <= 32767:
-        return int
+
+def read_memory(address):
+    if 0 <= address <= 32767:
+        memory = program[address]
+        if memory >= 32768:
+            return registers[memory - 32768]
+        else:
+            return memory
+
     elif int >= 32776:
-        raise NotImplementedError(f"Integer {instructionPointer} is not a valid memory address")
+        raise NotImplementedError(f"Integer {address} is not a valid memory address")
+
+def write_memory(address, value):
+    if 0 <= address <= 32767:
+        memory = program[address]
+        if memory >= 32768:
+            registers[memory - 32768] = value
+        else:
+            program[memory] = value
     else:
-         return registers[int - 32768]
+        raise NotImplementedError(f"Integer {address} is not a valid memory address")
+
 
 program = []
 registers = [0, 0, 0, 0, 0, 0, 0, 0]
 stack = []
 buffer = ""
-instructionPointer = 0
+ip = 0
 for instruction in instructions_from_file("/home/srdecny/Documents/Synacor/challenge.bin"):
     program.append(instruction)
 
 while True:
-    instruction = program[instructionPointer]
-    # print(f"Executing {instructionPointer}: {instruction}")
+    instruction = program[ip]
+    # print(f"Executing {ip}: {instruction}")
 
     if instruction == 0:
         break
     
     # set
     elif instruction == 1:
-        a = parse_int(instructionPointer + 1)
-        a = parse_int(instructionPointer + 2)
-        instructionPointer += 3
+        write_memory(read_memory(ip + 1), read_memory(ip + 2))
+        ip += 3
 
     # push on stack
     elif instruction == 2:
-        stack.append(parse_int(instructionPointer + 1))
-        instructionPointer += 2
+        stack.append(read_memory(ip + 1))
+        ip += 2
 
     # pop from stack
     elif instruction == 3:
-        parse_int(instructionPointer + 1)
-        instructionPointer += 2
+        write_memory(ip + 1, stack.pop)
+        ip += 2
+
     # equals
     elif instruction == 4:
-        a = parse_int(instructionPointer + 1)
-        a = 1 if parse_int(instructionPointer + 2) == parse_int(instructionPointer + 3) else 0
-        instructionPointer += 4
+        if read_memory(ip + 2) == read_memory(ip + 3):
+            write_memory(read_memory(ip + 1), 1)
+        else:
+            write_memory(read_memory(ip + 1), 0)
+        ip += 4
 
     # greater than
     elif instruction == 5:
-        a = parse_int(instructionPointer + 1)
-        a = 1 if parse_int(instructionPointer + 2) > parse_int(instructionPointer + 3) else 0
-        instructionPointer += 4
+        if read_memory(ip + 2) > read_memory(ip + 3):
+            write_memory(read_memory(ip + 1), 1)
+        else:
+            write_memory(read_memory(ip + 1), 0)
+        ip += 4
 
     # jump
     elif instruction == 6:
-        instructionPointer = parse_int(instructionPointer + 1)
+        ip = read_memory(ip + 1)
     
     # jump nonzero
     elif instruction == 7:
-        if parse_int(instructionPointer + 1) != 0:
-            instructionPointer = parse_int(instructionPointer + 2)
+        if read_memory(ip + 1) != 0:
+            ip = read_memory(ip + 2)
         else:
-            instructionPointer +=3
+            ip += 3
     
     # jump zero
     elif instruction == 8:
-        if parse_int(instructionPointer + 1) != 0:
-            instructionPointer = parse_int(instructionPointer + 2)
+        if read_memory(ip + 1) == 0:
+            ip = read_memory(ip + 2)
         else:
-            instructionPointer += 3
+            ip += 3
 
     # add
     elif instruction == 9:
-        a = parse_int(instructionPointer + 1)
-        a = (parse_int(instructionPointer + 2) + parse_int(instructionPointer + 3) ) % 32768
-        instructionPointer += 4
+        write_memory(read_memory(ip + 1), (read_memory(ip + 2) + read_memory(ip + 3) ) % 32768)
+        ip += 4
 
     # multiply
     elif instruction == 10:
-        a = parse_int(instructionPointer + 1)
-        a = (parse_int(instructionPointer + 2) * parse_int(instructionPointer + 3) ) % 32768
-        instructionPointer += 4
+        write_memory(read_memory(ip + 1), (read_memory(ip + 2) * read_memory(ip + 3) ) % 32768)
+        ip += 4
 
     # modulo
     elif instruction == 11:
-        a = parse_int(instructionPointer + 1)
-        a = parse_int(instructionPointer + 2) % parse_int(instructionPointer + 3)
-        instructionPointer += 4
+        write_memory(read_memory(ip + 1), read_memory(ip + 2) % read_memory(ip + 3))
+        ip += 4
     
     # bitwise and
     elif instruction == 12:
-        a = parse_int(instructionPointer + 1)
-        a = parse_int(instructionPointer + 2) & parse_int(instructionPointer + 3)
-        instructionPointer += 4
+        write_memory(read_memory(ip + 1), read_memory(ip + 2) & read_memory(ip + 3))
+        ip += 4
 
     # bitwise or
     elif instruction == 13:
-        a = parse_int(instructionPointer + 1)
-        a = parse_int(instructionPointer + 2) | parse_int(instructionPointer + 3)
-        instructionPointer += 4
+        write_memory( read_memory(ip + 1), read_memory(ip + 2) | read_memory(ip + 3))
+        ip += 4
 
     # bitwise not
     elif instruction == 14:
-        a = parse_int(instructionPointer + 1)
-        a = ~parse_int(instructionPointer + 2)
-        instructionPointer += 3
+        write_memory(ip + 1, ~read_memory(ip+ 2))
+        ip += 3
 
     # read memory
     elif instruction == 15:
-        a = parse_int(instructionPointer + 1)
-        a = parse_int(instructionPointer + 2)
-        instructionPointer += 3
+        write_memory(read_memory(ip + 1), read_memory(ip+2))
+        ip += 3
 
     # write memory
     elif instruction == 16:
-        b = parse_int(instructionPointer + 2)
-        program[parse_int(instructionPointer + 1)] = b
-        instructionPointer += 3
+        write_memory(read_memory(read_memory(ip + 1)), program[ip + 2])
+        ip += 3
     
     # call
     elif instruction == 17:
-        stack.insert(instructionPointer + 2)
-        instructionPointer = parse_int(instructionPointer + 1)
+        stack.insert(ip + 2)
+        ip = read_memory(ip + 1)
 
     # ret
     elif instruction == 18:
-        instructionPointer = parse_int(stack.pop)
+        ip = read_memory(stack.pop)
     
     # print
     elif instruction == 19:
-        print(chr(program[instructionPointer + 1]))
-        instructionPointer += 2
+        print(chr(program[ip + 1]), end='')
+        if (chr(program[ip + 1])) == 10:
+            print()
+        ip += 2
 
     # read
     elif instruction == 20:
         if buffer == "":
             buffer = input()
-        a = parse_int(instructionPointer + 1)
-        a = buffer[0]
-        instructionPointer += 2
+        write_memory(read_memory(ip+1), buffer[0])
+        ip += 2
         buffer = buffer[1:]
         
     # noop
     elif instruction == 21:
-        instructionPointer += 1
+        ip += 1
+
     else:
         raise NotImplementedError(f"Instruction {instruction} not implemented.")
