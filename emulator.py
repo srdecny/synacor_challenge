@@ -1,4 +1,6 @@
 
+import numpy as np
+
 def instructions_from_file(filename):
     with open(filename, "rb") as file:
         while True:
@@ -9,27 +11,34 @@ def instructions_from_file(filename):
                 break
 
 def read_memory(address):
-    if 0 <= address <= 32767:
-        memory = program[address]
-        if memory >= 32768:
-            return registers[memory - 32768]
+    if 0 <= address <= 32775:
+        if address >= 32768:
+            return registers[address - 32768]
         else:
-            return memory
+            return address
 
     elif int >= 32776:
         raise NotImplementedError(f"Integer {address} is not a valid memory address")
 
 def write_memory(address, value):
-    if 0 <= address <= 32767:
-        memory = program[address]
-        if memory >= 32768:
-            registers[memory - 32768] = value
+    if 0 <= address <= 32775:
+        if address >= 32768:
+            registers[address - 32768] = value
         else:
-            program[memory] = value
+            program[address] = value
     else:
         raise NotImplementedError(f"Integer {address} is not a valid memory address")
 
+def get_parameters(start, count):
+    if count > 1:
+        parameters = []
+        for i in range(start+1, start+count+1):
+            parameters.append(program[i])
+        return parameters
+    else:
+        return program[start + 1]
 
+opcodes = ["halt", "set", "push", "pop", "eq", "gt", "jmp", "jt", "jf", "add", "mult", "mod", "and", "or", "not", "rmem", "wmem", "call", "ret", "out", "in", "noop"]
 program = []
 registers = [0, 0, 0, 0, 0, 0, 0, 0]
 stack = []
@@ -40,121 +49,143 @@ for instruction in instructions_from_file("/home/srdecny/Documents/Synacor/chall
 
 while True:
     instruction = program[ip]
-    # print(f"Executing {ip}: {instruction}")
+    #print(f"Executing {ip}: {opcodes[instruction]}")
+
+    if ip == 697:
+        print("")
 
     if instruction == 0:
         break
     
     # set
     elif instruction == 1:
-        write_memory(read_memory(ip + 1), read_memory(ip + 2))
+        a, b = get_parameters(ip, 2)
+        registers[a - 32768] = b
         ip += 3
 
     # push on stack
     elif instruction == 2:
-        stack.append(read_memory(ip + 1))
+        a = get_parameters(ip, 1)
+        stack.append(read_memory(a))
         ip += 2
 
     # pop from stack
     elif instruction == 3:
-        write_memory(ip + 1, stack.pop)
+        a = get_parameters(ip, 1)
+        write_memory(a, stack.pop())
         ip += 2
 
     # equals
     elif instruction == 4:
-        if read_memory(ip + 2) == read_memory(ip + 3):
-            write_memory(read_memory(ip + 1), 1)
+        a, b, c = get_parameters(ip, 3)
+        if read_memory(b) == read_memory(c):
+            write_memory(a, 1)
         else:
-            write_memory(read_memory(ip + 1), 0)
+            write_memory(a, 0)
         ip += 4
 
     # greater than
     elif instruction == 5:
-        if read_memory(ip + 2) > read_memory(ip + 3):
-            write_memory(read_memory(ip + 1), 1)
+        a, b, c = get_parameters(ip, 3)
+        if read_memory(b) > read_memory(c):
+            write_memory(a, 1)
         else:
-            write_memory(read_memory(ip + 1), 0)
+            write_memory(a, 0)
         ip += 4
 
     # jump
     elif instruction == 6:
-        ip = read_memory(ip + 1)
+        a = get_parameters(ip, 1)
+        ip = read_memory(a)
     
     # jump nonzero
     elif instruction == 7:
-        if read_memory(ip + 1) != 0:
-            ip = read_memory(ip + 2)
+        a, b = get_parameters(ip, 2)
+        if read_memory(a) != 0:
+            ip = read_memory(b)
         else:
             ip += 3
     
     # jump zero
     elif instruction == 8:
-        if read_memory(ip + 1) == 0:
-            ip = read_memory(ip + 2)
+        a, b = get_parameters(ip, 2)
+        if read_memory(a) == 0:
+            ip = read_memory(b)
         else:
             ip += 3
 
     # add
     elif instruction == 9:
-        write_memory(read_memory(ip + 1), (read_memory(ip + 2) + read_memory(ip + 3) ) % 32768)
+        a, b, c = get_parameters(ip, 3)
+        write_memory(a, (read_memory(b) + read_memory(c)) % 32768)
         ip += 4
 
     # multiply
     elif instruction == 10:
-        write_memory(read_memory(ip + 1), (read_memory(ip + 2) * read_memory(ip + 3) ) % 32768)
+        a, b, c = get_parameters(ip, 3)
+        write_memory(a, (read_memory(b) * read_memory(c)) % 32768)
         ip += 4
 
     # modulo
     elif instruction == 11:
-        write_memory(read_memory(ip + 1), read_memory(ip + 2) % read_memory(ip + 3))
+        a, b, c = get_parameters(ip, 3)
+        write_memory(a, read_memory(b) % read_memory(c))
         ip += 4
     
     # bitwise and
     elif instruction == 12:
-        write_memory(read_memory(ip + 1), read_memory(ip + 2) & read_memory(ip + 3))
+        a, b, c = get_parameters(ip, 3)
+        write_memory(a, (read_memory(b) & read_memory(c)) & 32767)
         ip += 4
 
     # bitwise or
     elif instruction == 13:
-        write_memory( read_memory(ip + 1), read_memory(ip + 2) | read_memory(ip + 3))
+        a, b, c = get_parameters(ip, 3)
+        write_memory(a, (read_memory(b) | read_memory(c)) & 32767)
         ip += 4
 
     # bitwise not
     elif instruction == 14:
-        write_memory(ip + 1, ~read_memory(ip+ 2))
+        a, b = get_parameters(ip, 2)
+        write_memory(a, (~np.uint16(read_memory(b)) & 32767))
         ip += 3
 
     # read memory
     elif instruction == 15:
-        write_memory(read_memory(ip + 1), read_memory(ip+2))
+        a, b = get_parameters(ip, 2)
+        write_memory(a, read_memory(b))
         ip += 3
 
     # write memory
     elif instruction == 16:
-        write_memory(read_memory(read_memory(ip + 1)), program[ip + 2])
+        a, b = get_parameters(ip, 2)
+        write_memory(read_memory(a), b)
         ip += 3
     
     # call
     elif instruction == 17:
-        stack.insert(ip + 2)
-        ip = read_memory(ip + 1)
+        a, get_parameters(ip, 1)
+        stack.append(ip + 2)
+        ip = read_memory(a)
 
     # ret
     elif instruction == 18:
-        ip = read_memory(stack.pop)
+        ip = stack.pop
     
     # print
     elif instruction == 19:
-        print(chr(program[ip + 1]), end='')
-        if (chr(program[ip + 1])) == 10:
+        a = program[ip + 1]
+        print(chr(a), end='')
+        if (chr(a)) == 10:
             print()
         ip += 2
 
     # read
     elif instruction == 20:
+        a = get_parameters(ip, 1)
         if buffer == "":
             buffer = input()
-        write_memory(read_memory(ip+1), buffer[0])
+        write_memory(a, buffer[0])
         ip += 2
         buffer = buffer[1:]
         
