@@ -51,9 +51,7 @@ while True:
     instruction = program[ip]
     #print(f"Executing {ip}: {opcodes[instruction]}")
 
-    if ip == 697:
-        print("")
-
+    # halt
     if instruction == 0:
         break
     
@@ -164,7 +162,7 @@ while True:
     
     # call
     elif instruction == 17:
-        a, get_parameters(ip, 1)
+        a = get_parameters(ip, 1)
         stack.append(ip + 2)
         ip = read_memory(a)
 
@@ -174,7 +172,7 @@ while True:
     
     # print
     elif instruction == 19:
-        a = program[ip + 1]
+        a = get_parameters(ip, 1)
         print(chr(a), end='')
         if (chr(a)) == 10:
             print()
