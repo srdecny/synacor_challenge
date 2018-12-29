@@ -49,7 +49,9 @@ for instruction in instructions_from_file("/home/srdecny/Documents/Synacor/chall
 
 while True:
     instruction = program[ip]
-    #print(f"Executing {ip}: {opcodes[instruction]}")
+
+    #if instruction != 19: 
+      #print(f"Executing {ip}: {opcodes[instruction]}")
 
     # halt
     if instruction == 0:
@@ -58,7 +60,7 @@ while True:
     # set
     elif instruction == 1:
         a, b = get_parameters(ip, 2)
-        registers[a - 32768] = b
+        registers[a - 32768] = read_memory(b)
         ip += 3
 
     # push on stack
@@ -151,13 +153,14 @@ while True:
     # read memory
     elif instruction == 15:
         a, b = get_parameters(ip, 2)
-        write_memory(a, read_memory(b))
+        value = program[read_memory(b)]
+        write_memory(a, value)
         ip += 3
 
     # write memory
     elif instruction == 16:
         a, b = get_parameters(ip, 2)
-        write_memory(read_memory(a), b)
+        program[read_memory(a)] = read_memory(b)
         ip += 3
     
     # call
@@ -168,13 +171,16 @@ while True:
 
     # ret
     elif instruction == 18:
-        ip = stack.pop
+        if len(stack) > 0:
+            ip = stack.pop()
+        else:
+            break
     
     # print
     elif instruction == 19:
         a = get_parameters(ip, 1)
-        print(chr(a), end='')
-        if (chr(a)) == 10:
+        print(chr(read_memory(a)), end='')
+        if (chr(read_memory(a))) == 10:
             print()
         ip += 2
 
@@ -182,10 +188,11 @@ while True:
     elif instruction == 20:
         a = get_parameters(ip, 1)
         if buffer == "":
-            buffer = input()
-        write_memory(a, buffer[0])
-        ip += 2
+            buffer = input("> ")
+            buffer = buffer + "\n"
+        write_memory(a, ord(buffer[0]))
         buffer = buffer[1:]
+        ip += 2
         
     # noop
     elif instruction == 21:
